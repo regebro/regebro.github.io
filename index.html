@@ -1,0 +1,123 @@
+<!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><head><title></title><meta charset="UTF-8"></meta><meta name="generator" content="Hovercraft! 1.0 http://regebro.github.com/hovercraft"></meta><link rel="stylesheet" href="css/hovercraft.css" media="all"></link><link rel="stylesheet" href="css/highlight.css" media="all"></link><link rel="stylesheet" href="css/shoobx-hovercraft.css" media="screen,projection"></link><script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        showProcessingMessages: false,
+        messageStyle: "none",
+        TeX : { extensions : ['color.js'] }
+      });
+    </script></head><body class="impress-not-supported"><div id="impress"><div class="step step-level-1" step="0" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="0" data-y="0" data-z="0"><h1 id="pyocf">PyOCF</h1><ul><li>Python Library for OCF handling</li><li>Creates Python objects from OCF files
+or OCF files from Python objects</li><li>Runtime type handling thanks to pydantic</li><li>The code is generated from the OCF schema</li></ul></div><div class="step step-level-1" step="1" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="1600" data-y="0" data-z="0"><h1 id="code-generation">Code generation</h1><ul><li>When you don't want to get attached to your code</li></ul><div class="notes"><p>We generate the Python code from the OCF schemas. This is mainly because the OCF schemas
+are still in Beta, and we don't want to have to keep it up to date manually, because then
+it will always not up to date.</p><p>There's already tools that can generate code from schemas, so we tried some out.</p></div></div><div class="step step-level-1" step="2" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="3200" data-y="0" data-z="0"><h1 id="json-schema-url-id-s">JSON Schema URL ID's</h1><pre class="highlight code json"><span class="p">{</span><span class="w">
+  </span><span class="nt">"$schema"</span><span class="p">:</span><span class="w"> </span><span class="s2">"http://json-schema.org/draft-07/schema"</span><span class="p">,</span><span class="w">
+  </span><span class="nt">"$id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"https://opencaptablecoalition.com/[...]/VestingTermsFile.schema.json"</span><span class="p">,</span><span class="w">
+  </span><span class="nt">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"File - Vesting Terms"</span><span class="p">,</span><span class="w">
+  </span><span class="p">[</span><span class="err">...</span><span class="p">]</span><span class="w">
+  </span><span class="nt">"properties"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nt">"items"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+      </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"array"</span><span class="p">,</span><span class="w">
+      </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"List of OCF vesting terms objects"</span><span class="p">,</span><span class="w">
+      </span><span class="nt">"items"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nt">"$ref"</span><span class="p">:</span><span class="w"> </span><span class="s2">"https://opencaptablecoalition.com/[...]/VestingTerms.schema.json"</span><span class="w">
+      </span><span class="p">}</span><span class="w">
+   </span><span class="p">[</span><span class="err">...</span><span class="p">]</span><span class="w">
+</span><span class="p">}</span></pre><div class="notes"><p>There was one big problem with many of them, though:</p><p>The JSON Schema has URL's as ids, and several generators looks at a reference,
+and if it's a URL, it tries to fetch the schema for that reference from that URL.
+And that might work, if the schema was released and published, and not in a beta version.
+But OCF is in beta version, and isn't completely published, so that fails.
+Instead the code generator needs to load all the schema files first, and only then try to resolve them.</p></div></div><div class="step step-level-1" step="3" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="4800" data-y="0" data-z="0"><h1 id="existing-tools">Existing tools</h1><ul><li>json-schema-codegen</li><li>statham-schema</li><li>Warlock</li><li>yacg</li><li>datamodel-codegen</li></ul><div class="notes"><p>I looked at a few:</p><ul><li>json-schema-codegen and statham-schema, both of which I couldn't understand how to create objects
+from more than one schema file at a a time.</li><li>Warlock, which creates objects, not code, which makes me worried it's going to be hard to debug.</li><li>yacg, which the author weirdly only has published as a Docker container, so that went nowhere.
+The code is also quite complex, because it actually tries to be generic, so it can support
+both any type of schema, and any type of output code, which seems overly ambitious.</li></ul><p>And then datamodel-codegen, which I looked more closely, as it seemed promising.</p></div></div><div class="step step-level-1" step="4" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="6400" data-y="0" data-z="0"><h1 id="datamodel-codegen">datamodel-codegen</h1><ul><li>Needs modifying of the schema</li><li>Generates ugly code</li><li>We got: <tt>pyocf.objects.StockClass.ObjectStockClass()</tt></li><li>We rather wanted: <tt>pyocf.objects.stockclass.StockClass()</tt></li></ul><div class="notes"><p>It also has the URL loading problem, but I could work around that, and have it generate code.</p><p>However, it uses the file names as the names for modules, which makes sense, but unfortunately, Python
+style guides say that file names should be lowercase, and the OCF Schema filenames are not.
+It  also generated the class names from the schema titles. And that gives us classes like
+pyocf.objects.StockClass.ObjectStockClass() when we would have wanted wanted
+pyocf.objects.stockclass.StockClass().</p></div></div><div class="step step-level-1" step="5" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="8000" data-y="0" data-z="0"><pre class="highlight code python"><span class="k">class</span> <span class="nc">StockClass</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="k">class</span> <span class="nc">Config</span><span class="p">:</span>
+        <span class="n">extra</span> <span class="o">=</span> <span class="n">Extra</span><span class="o">.</span><span class="n">forbid</span>
+
+    <span class="n">__root__</span><span class="p">:</span> <span class="n">Any</span>
+
+
+<span class="k">class</span> <span class="nc">StockClassModel</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="k">class</span> <span class="nc">Config</span><span class="p">:</span>
+        <span class="n">extra</span> <span class="o">=</span> <span class="n">Extra</span><span class="o">.</span><span class="n">forbid</span>
+
+    <span class="n">object_type</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="s1">'Name for the stock type'</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">class_type</span><span class="p">:</span> <span class="n">StockClassType</span><span class="o">.</span><span class="n">StockClassTypeModel</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span>
+        <span class="o">...</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">'The type of this stock class'</span>
+    <span class="p">)</span>
+    <span class="p">[</span><span class="o">...</span><span class="p">]</span></pre><div class="notes"><p>Fixing those problems by modifying the Schema still resulted in code like this:</p><p>Why is there a StockClass, and a StockClassModel? I don't know know. And at
+this point I needed to use field discriminators, which I will explain later,
+and I couldn't get that to work, so I decided to make my own code generator.</p></div></div><div class="step step-level-1" step="6" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="9600" data-y="0" data-z="0"><h1 id="my-solution">My solution</h1><ul><li>Load all the schema files</li><li>Extract info from those schemas</li><li>Make Python files via Mako templates</li><li>Currently &lt; 400 lines of code</li></ul></div><div class="step step-level-1" step="7" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="11200" data-y="0" data-z="0"><h1 id="pydantic">Pydantic</h1><div class="notes"><p>Both datamodel-codegen and our code generator generates code that uses Pydantic.
+Pydantic is a runtime data verification library. So you set up your classes with Python
+type hints, and Pydantic will, during runtime, make sure you only set attributes to the right type,
+which will ensure that the data we save is valid, and what more,
+it will try to convert the indata to the right types. This is very handy for
+importing data from text files like JSON.</p><p>Pydantic runtime verification is slow, but you can avoid all verification with .construct() if you need speed.
+So if you KNOW the data is as it should be you can construct it quickly.</p></div></div><div class="step step-level-1" step="8" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="12800" data-y="0" data-z="0"><h1 id="field-discriminators">Field Discriminators</h1><pre class="highlight code python"><span class="c1"># List of OCF transaction objects</span>
+<span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span>
+        <span class="n">ConvertibleAcceptance</span>
+        <span class="o">|</span> <span class="n">PlanSecurityAcceptance</span>
+        <span class="o">|</span> <span class="n">StockAcceptance</span>
+        <span class="o">|</span> <span class="n">WarrantAcceptance</span>
+        <span class="o">|</span> <span class="n">ConvertibleCancellation</span>
+        <span class="o">|</span> <span class="n">PlanSecurityCancellation</span>
+        <span class="o">|</span> <span class="n">StockCancellation</span>
+        <span class="o">|</span> <span class="n">WarrantCancellation</span>
+        <span class="o">|</span> <span class="n">ConvertibleConversion</span>
+        <span class="o">|</span> <span class="n">StockConversion</span>
+        <span class="o">|</span> <span class="n">PlanSecurityExercise</span>
+        <span class="o">|</span> <span class="n">WarrantExercise</span>
+        <span class="o">|</span> <span class="n">ConvertibleIssuance</span>
+        <span class="o">|</span> <span class="n">PlanSecurityIssuance</span>
+        <span class="o">|</span> <span class="n">StockIssuance</span>
+        <span class="p">[</span><span class="o">...</span><span class="p">]</span></pre><div class="notes"><p>I mentioned Field Discriminators before</p><p>There are 31 different types of transactions, which means the transaction file has a field like this example.</p><p>But when loading this from a JSON file, how does it know which of these classes to create?
+By default it will simply create the first one, and that's most of the time incorrect.</p><p>And this is where the magic of field discriminatiors enter.</p></div></div><div class="step step-level-1" step="9" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="14400" data-y="0" data-z="0"><h1 id="id1">Field Discriminators</h1><pre class="highlight code python"><span class="c1"># List of OCF transaction objects</span>
+<span class="n">items</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span>
+    <span class="n">Annotated</span><span class="p">[</span>
+        <span class="n">ConvertibleAcceptance</span>
+    <span class="p">[</span><span class="mi">29</span> <span class="n">classes</span> <span class="n">removed</span> <span class="k">for</span> <span class="n">brevity</span><span class="p">]</span>
+        <span class="o">|</span> <span class="n">StockPlanPoolAdjustment</span><span class="p">,</span>
+        <span class="n">Field</span><span class="p">(</span><span class="n">discriminator</span><span class="o">=</span><span class="s2">"object_type"</span><span class="p">),</span>
+    <span class="p">]</span></pre><div class="notes"><p>This means it loads the json, looks at the object_type field in the JSON, looks at all the
+allowed classes, and finds the object type that matches.</p></div></div><div class="step step-level-1" step="10" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="16000" data-y="0" data-z="0"><h1 id="id2">Field Discriminators</h1><pre class="highlight code python"><span class="k">class</span> <span class="nc">StockPlanPoolAdjustment</span><span class="p">(</span><span class="n">Object</span><span class="p">,</span> <span class="n">Transaction</span><span class="p">,</span> <span class="n">StockPlanTransaction</span><span class="p">):</span>
+    <span class="sd">"""Stock Plan Pool Adjustment Transaction"""</span>
+
+    <span class="n">object_type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">"TX_STOCK_PLAN_POOL_ADJUSTMENT"</span><span class="p">]</span> <span class="o">=</span> \
+        <span class="s2">"TX_STOCK_PLAN_POOL_ADJUSTMENT"</span></pre><div class="notes"><p>The classes must have a literal to match against. It's less than pretty, but it works:</p><p>The Literal["TX_STOCK_PLAN_POOL_ADJUSTMENT"] bit says that this HAS to be a Literal string with that value,
+and the = "TX_STOCK_PLAN_POOL_ADJUSTMENT" sets it to that value. A bit redundant, but it seems like this is
+the correct way to do it.</p></div></div><div class="step step-level-1" step="11" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="17600" data-y="0" data-z="0"><h1 id="code-style">Code style</h1><img src="images/men-in-black.webp"></img><div class="notes"><p>Generating code is one thing, generating pretty code is another. Luckily we have a shortcut.
+We just run black on the code after generating it.</p><p>Black doesn't break long strings or comments, so that is done in the generator code,
+all other formatting is done by black.</p></div></div><div class="step step-level-1" step="12" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="19200" data-y="0" data-z="0"><h1 id="import-styling">Import styling</h1><pre class="highlight code python"><span class="kn">from</span> <span class="nn">pyocf.objects.transactions.acceptance.stockacceptance</span> <span class="kn">import</span> <span class="n">StockAcceptance</span>
+<span class="kn">from</span> <span class="nn">pyocf.objects.transactions.acceptance.warrantacceptance</span> <span class="kn">import</span> <span class="n">WarrantAcceptance</span>
+
+<span class="p">[</span><span class="o">...</span><span class="p">]</span>
+
+<span class="n">transaction</span><span class="p">:</span> <span class="n">StockAcceptance</span> <span class="o">|</span> <span class="n">WarrantAcceptance</span></pre><div class="notes"><p>I currently import classes, so code looks like this.</p><p>I could possibly just import pyocf instead, and have code like this</p></div></div><div class="step step-level-1" step="13" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="20800" data-y="0" data-z="0"><h1 id="id3">Import styling</h1><pre class="highlight code python"><span class="kn">import</span> <span class="nn">pyocf</span>
+
+<span class="p">[</span><span class="o">...</span><span class="p">]</span>
+
+<span class="n">transaction</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">pyocf</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">transactions</span><span class="o">.</span><span class="n">acceptance</span><span class="o">.</span><span class="n">stockacceptance</span><span class="o">.</span><span class="n">StockAcceptance</span> <span class="o">|</span>
+    <span class="n">pyocf</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">transactions</span><span class="o">.</span><span class="n">acceptance</span><span class="o">.</span><span class="n">warrantacceptance</span><span class="o">.</span><span class="n">WarrantAcceptance</span>
+<span class="p">)</span></pre><div class="notes"><p>Or any form of compromise there, like importing only 2 or 3 levels down.
+Opinions are welcome.</p></div></div><div class="step step-level-1" step="14" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="22400" data-y="0" data-z="0"><h1 id="fields">Fields?</h1><pre class="highlight code python"><span class="n">STYLE</span> <span class="n">ONE</span><span class="p">:</span>
+
+<span class="c1"># Very long text here</span>
+<span class="n">object_type</span><span class="p">:</span> <span class="n">ObjectType</span>
+
+
+<span class="n">STYLE</span> <span class="n">TWO</span><span class="p">:</span>
+
+<span class="n">object_type</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+    <span class="n">ObjectType</span><span class="p">,</span>
+    <span class="n">Field</span><span class="p">(</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">"Very long text here"</span>
+    <span class="p">)</span>
+<span class="p">]</span></pre><div class="notes"><p>We could use Field() everywhere, not just when we have discriminator fields.</p><p>That would make it possible to get descriptions on fields, but on the otehr
+hand, the descriptions are very long, so it makes for ugly code, so I just
+stuck it as comments for the time being.</p></div></div><div class="step step-level-1" step="15" data-rotate-x="0" data-rotate-y="0" data-rotate-z="0" data-scale="1" data-x="24000" data-y="0" data-z="0"><p>That's all folks</p></div></div><script type="text/javascript" src="js/impress.js"></script><script type="text/javascript" src="js/gotoSlide.js"></script><script type="text/javascript" src="js/hovercraft.js"></script></body></html>
